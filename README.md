@@ -7,7 +7,7 @@ This project consists of two parts: an Arduino-based module to measure temperatu
 The Lcd-Meter project uses an Arduino UNO or similar, together with an Ethernet shield (W5100 type), a DHT22 temperature/humidity sensor, a DS3231 realtime clock module, and a 16x2 LCD module. The latter two are connected by I2C, while the Ethernet module uses SPI and the DHT22 sensor is connected via 1-wire protocol.
 
 <b>Software:</b>
-On the Arduino side the project makes use mostly of standard procedures to read from the sensor and realtime clock, output to the LCD and to create a simple web client in order to deliver the data to the webserver via HTTP GET requests. The Arduino code makes use of the libraries Wire.h, LiquidCrystal_I2C.h, DS3231.h, DHT.h, SPI.h, and Ethernet.h.
+On the Arduino side the project implements mostly standard procedures to read from the sensor and realtime clock, output to the LCD and to create a simple web client in order to deliver the data to the webserver via HTTP GET requests. The Arduino code makes use of the libraries Wire.h, LiquidCrystal_I2C.h, DS3231.h, DHT.h, SPI.h, and Ethernet.h.
 On the server side the data are received by sensor.php and written into .csv files. The system is desgined for simple use and therefore does not implement a database. Data can be viewed by navigating to index.php on the webserver. A few settings are available in settings.php and formatting is mostly specified in the style.css file.
 
 A demonstration website - which can also be used for initial test-driving when you have assembled your own device - is available here: https://mackrug.de/lcdmeter
