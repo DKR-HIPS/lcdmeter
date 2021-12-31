@@ -1,4 +1,4 @@
-# lcdmeter
+# Lcd-Meter
 <b>Arduino project - measuring temperature and humidity featuring LC display and simple webserver upload</b>
 
 This project consists of two parts: an Arduino-based module to measure temperature and humidity and sending these data to a webserver, plus a simple server-side php webpage to display and archive the measurements.
