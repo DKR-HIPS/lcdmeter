@@ -3,7 +3,7 @@
 require('settings.php');
 
 $security = trim($_GET['s']) ;
-$date = $_GET['d'] ;
+$date = trim($_GET['d']) ;
 $stime = $_GET['c'] ;
 $temperature = $_GET['t'] ;
 $humidity = $_GET['h'] ;
@@ -31,14 +31,14 @@ if($security==$code && isset($date) && isset($stime) && isset($temperature) && i
   
   file_put_contents($filedir.$filename, $newfile) ;
   
-  echo("|".$nowtime."_".$nowdate) ;
-  // the server answers back: current time_date with a leading | character
+  echo("|".$nowtime."|".$nowdate."|") ;
+  // the server answers back: current time/date with recoginition | characters
   // in a future version this could be used to adjust the device clock if time differs too much
 }
   
 else
 {
-echo("ERROR") ;
+echo("|00:00:00|0000-00-00|") ;
 }
 
 ?>
