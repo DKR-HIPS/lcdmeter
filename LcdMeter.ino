@@ -1,6 +1,6 @@
 /*********************
 
-Lcd-Meter Version: 2021-12-31
+Lcd-Meter Version: 2022-01-03
 Arduino for temperature and humidity measurement, display on LCD and send data to web server.
 Parts: DHT22 sensor via 1-wire protocol, DS3231 realtime clock and 16x2 LC-display via I2C, 5100-type Ethernet shield via SPI 
 (not using the SD card on the Ethernet module)
@@ -36,6 +36,7 @@ bool initclock = false;  // Initialize the RTC with initclock = true (one-time, 
 char server[] = "mackrug.de";     // Name of webserver, where the measurement data will be sent (note: a working test server is configured here)
 char serverpath[] = "/lcdmeter/sensor.php";  // path to PHP script on webserver, which is called via http. Starts with "/"
 char security[] = "8a7b6c5d";     // 8 hex digits security code for this device, used in the HTTP GET request and checked by PHP script on server
+char marker = char('|');          // recognition sign "|" used in the 21-characters date/time response string "|Y-m-d|H:i:s|" from the server
 
 int sendspeed = 10 ;               // Interval (in minutes) for sending data to the Webserver
 float tempcorr = 0.0 ;            // This correction value is applied to measured temperature (default: 0.0)
@@ -89,7 +90,7 @@ void setup() {
 
   if (Ethernet.begin(mac) == false)   // try to get IP-address via DHCP
     {
-     Ethernet.begin(mac,ip);     // if not successful, use the specified static fallback address
+     Ethernet.begin(mac, ip);     // if not successful, use the specified static fallback address
     }  
   delay(1000);
   
@@ -108,6 +109,7 @@ float humidity;
 float temperature;
 
 bool displaylight = true;
+bool lightswitch = true;
 bool lbuttondown = false;
 bool sbuttondown = false;
 int timecounter = 1;
@@ -146,7 +148,7 @@ else if(digitalRead(SENDBUTTON) == HIGH && sbuttondown == true)
 timecounter--;
 if (timecounter < 1)
 {
-  timecounter = 10;
+  timecounter = 10;   // 10 x 20 ms = ca. 0.2 second interval
   thistime = nice(myRTC.getHour(h12,PM))+":"+nice(myRTC.getMinute())+":"+nice(myRTC.getSecond());
 }
 
@@ -178,13 +180,15 @@ if (thistime != lasttime)
     Ethernet.maintain();
 
     // deactivate LCD backlight automatically at nighttime and activate in the morning
-    if(displaylight == true && myRTC.getHour(h12,PM) == NIGHT && myRTC.getMinute() == 0 )
+    if(lightswitch == true && myRTC.getHour(h12,PM) == NIGHT )
       {
+       lightswitch = false;
        displaylight = false;
        lcd.noBacklight(); 
       }
-    if(displaylight == false && myRTC.getHour(h12,PM) == MORNING && myRTC.getMinute() == 0 )
+    if(lightswitch == false && myRTC.getHour(h12,PM) == MORNING )
       {
+       lightswitch = true;
        displaylight = true;
        lcd.backlight(); 
       }
@@ -226,7 +230,7 @@ if (sensorcounter < 1)
    lcd.setCursor(15,0);
    lcd.print( (char)127 );
    humidity = dht.readHumidity() ;         // read humidity
-   delay(150);
+   delay(200);
    temperature = dht.readTemperature() + tempcorr ;   // read temperature and add the correction value
    lcd.setCursor(15,0);
    lcd.print(" ");
