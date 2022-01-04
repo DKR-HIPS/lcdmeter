@@ -161,14 +161,14 @@ if (thistime != lasttime)
   if (displaycounter > 5) 
    {
     lcd.setCursor(0,0);
-    lcd.print(thisdate+"      ");
+    lcd.print(thisdate+"     ");
     lcd.setCursor(0,1);
     lcd.print(thistime+"        ");
    }
   else 
    {
     lcd.setCursor(0,0);
-    lcd.print("Temp "+String(temperature)+" "+(char)223+"C   ");
+    lcd.print("Temp "+String(temperature)+" "+(char)223+"C  ");
     lcd.setCursor(0,1);
     lcd.print("Humidity "+String(humidity)+" %");
    }
