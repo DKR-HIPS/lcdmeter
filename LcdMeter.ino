@@ -1,9 +1,9 @@
 /*********************
 
-Lcd-Meter Version: 2022-01-04 v1.0.1
+Lcd-Meter Version: 2022-01-13 v1.1.0
 Arduino for temperature and humidity measurement, display on LCD and send data to web server.
 Parts: DHT22 sensor via 1-wire protocol, DS3231 realtime clock and 16x2 LC-display via I2C, 5100-type Ethernet shield via SPI 
-(not using the SD card on the Ethernet module)
+(not using the SD card on the Ethernet module). One-button date/time setup.
 
 **********************/
 
@@ -24,21 +24,13 @@ Parts: DHT22 sensor via 1-wire protocol, DS3231 realtime clock and 16x2 LC-displ
 #define NIGHT 23          // the hour when LCD backlight should automatically switch off
 #define MORNING 7         // the hour when LCD backlight is automatically switched on
 
-bool initclock = false;  // Initialize the RTC with initclock = true (one-time, afterwards set to false and upload to board again)
-#define SETYEAR 21       // Enter date and time values to set RTC module and upload in the right moment...
-#define SETMONTH 12
-#define SETDAY 31
-#define SETDOW 5
-#define SETHOUR 15
-#define SETMINUTE 30
-#define SETSECOND 10
+#define SENDSPEED 10      // Interval (in minutes) for sending data to the Webserver
 
 char server[] = "mackrug.de";     // Name of webserver, where the measurement data will be sent (note: a working test server is configured here)
 char serverpath[] = "/lcdmeter/sensor.php";  // path to PHP script on webserver, which is called via http. Starts with "/"
 char security[] = "8a7b6c5d";     // 8 hex digits security code for this device, used in the HTTP GET request and checked by PHP script on server
 char marker = char('|');          // recognition sign "|" used in the 21-characters date/time response string "|Y-m-d|H:i:s|" from the server
 
-int sendspeed = 10 ;               // Interval (in minutes) for sending data to the Webserver
 float tempcorr = 0.0 ;            // This correction value is applied to measured temperature (default: 0.0)
 
 // MAC address from label on the ethernet shield or simply made up (but unique inside network)
@@ -63,33 +55,46 @@ void setup() {
   pinMode(SENDBUTTON, INPUT_PULLUP);
   
   Wire.begin();
-  // Serial Monitor only for testing purposes if needed
   // Serial.begin(19200);
-
-  // optional: intialize the RTC with new date/time (obviously makes no sense to do this on every reboot!)
-  if(initclock == true)
-  {
-  myRTC.setClockMode(false);
-  myRTC.setYear(SETYEAR);
-  myRTC.setMonth(SETMONTH);
-  myRTC.setDate(SETDAY);
-  myRTC.setDoW(SETDOW);
-  myRTC.setHour(SETHOUR);
-  myRTC.setMinute(SETMINUTE);
-  myRTC.setSecond(SETSECOND);
-  }
   
   lcd.init();
-  // switch LCD backlight on (lcd.noBacklight(); switches it off).
-  lcd.backlight(); 
-  lcd.print("Lcd-Meter    IP:");
+  // switch the LCD backlight on
+  lcd.backlight();
+  lcd.clear();
+  lcd.print("Lcd-Meter");
+
+  // check if the lightbutton is being held down during power-up for more than 2 seconds
+  if(digitalRead(LIGHTBUTTON) == LOW) 
+  { 
   lcd.setCursor(0,1);
-  lcd.print("please wait");
+  lcd.print("Set date/time ? ");
+  int setdcount = 0;
+   while(digitalRead(LIGHTBUTTON) == LOW)
+    {
+     setdcount++;
+     delay(20);
+     if(setdcount == 100)
+       {
+        lcd.setCursor(14,1);
+        lcd.print(">>");
+       }
+    }
+   if(setdcount > 100)
+    {
+     setd();   //call the function to set date/time in the RTC after button is released
+    }
+  }
+  
+  lcd.setCursor(0,1);
+  lcd.print("IP: trying DHCP ");
 
   dht.begin(); //DHT22 sensor start
 
   if (Ethernet.begin(mac) == false)   // try to get IP-address via DHCP
     {
+     lcd.setCursor(0,1);
+     lcd.print("IP: using static");
+     delay(1000);
      Ethernet.begin(mac, ip);     // if not successful, use the specified static fallback address
     }  
   delay(1000);
@@ -161,14 +166,14 @@ if (thistime != lasttime)
   if (displaycounter > 5) 
    {
     lcd.setCursor(0,0);
-    lcd.print(thisdate+"     ");
+    lcd.print(thisdate+"      ");
     lcd.setCursor(0,1);
     lcd.print(thistime+"        ");
    }
   else 
    {
     lcd.setCursor(0,0);
-    lcd.print("Temp "+String(temperature)+" "+(char)223+"C  ");
+    lcd.print("Temp "+String(temperature)+" "+(char)223+"C   ");
     lcd.setCursor(0,1);
     lcd.print("Humidity "+String(humidity)+" %");
    }
@@ -197,7 +202,7 @@ if (thistime != lasttime)
     sendcounter--;
     if (sendcounter < 1)
      {
-      sendcounter = 6 * sendspeed;
+      sendcounter = 6 * SENDSPEED;
       lcd.clear();
       lcd.print("Sending to:");
       lcd.setCursor(0,1);
@@ -253,4 +258,84 @@ String nice(int thisvalue)
   nicevalue = String(thisvalue);
   }
   return nicevalue;
+}
+
+// the function "setd" provides a simple one-button date/time setup routine
+bool setd()
+{
+  int setval[] = { 0,0,21,1,1 };
+  int maxval[] = { 23,59,50,12,31 };
+  int minval[] = { 0,0,21,1,1 };
+  int monval[] = { 0,31,29,31,30,31,30,31,31,30,31,30,31 };
+  int rowval[] = { 0,0,1,1,1,0 };
+  int posval[] = { 7,10,9,12,15,15 };
+  int maxvalue;
+  lcd.clear();
+  lcd.print("Time: 00:00 h");
+  lcd.setCursor(0,1);
+  lcd.print("Date: 2021-01-01");
+  lcd.blink();
+  for(int setsel = 0; setsel < 5; setsel++ )
+  {  
+  bool wsetd = false;
+  lcd.setCursor( posval[setsel],rowval[setsel] );
+  while(wsetd == false)
+     {
+      if(digitalRead(LIGHTBUTTON) == LOW) 
+        { 
+         setval[setsel]++;
+         if(setsel == 4)
+           {
+            maxvalue = monval[setval[3]];  // max. days setting depends on the month
+            }
+         else
+           {
+            maxvalue = maxval[setsel];
+            }
+         
+         if(setval[setsel] > maxvalue) 
+           { 
+            setval[setsel] = minval[setsel]; 
+           }
+         lcd.setCursor( posval[setsel]-1,rowval[setsel] );
+         lcd.print(nice( setval[setsel] ));
+         lcd.setCursor( posval[setsel], rowval[setsel] );
+         int nsetd = 0;
+         while(digitalRead(LIGHTBUTTON) == LOW)
+           {
+           nsetd++;
+           delay(10);
+           if(nsetd == 150)    // if button hold down for more than 1.5 sec
+             {
+              wsetd = true; 
+              lcd.setCursor( posval[setsel+1], rowval[setsel+1] );
+             } 
+           }
+         }
+       if(digitalRead(SENDBUTTON) == LOW)   // this button cancels date/time setup
+         {
+          lcd.noBlink();
+          lcd.clear();
+          lcd.print("Date/time cancel");
+          delay(500);
+          return false;
+          }
+       delay(20);
+     }
+  }
+  lcd.noBlink();
+  lcd.clear();
+  lcd.print("Date/time set !");
+  
+  myRTC.setClockMode(false);
+  myRTC.setYear(setval[2]);
+  myRTC.setMonth(setval[3]);
+  myRTC.setDate(setval[4]);
+  myRTC.setDoW(1);
+  myRTC.setHour(setval[0]);
+  myRTC.setMinute(setval[1]);
+  myRTC.setSecond(0);
+
+  delay(500);
+  return true;
 }
