@@ -12,7 +12,7 @@ On the server side the data are received by sensor.php and written into .csv fil
 
 A demonstration website - which can also be used for initial test-driving when you have assembled your own device - is available here: https://mackrug.de/lcdmeter
 
-<img src=lcdmeter_picture.jpg height=300px>
+<img src=lcdmeter_picture.jpg width=60%>
 
 ## How to get started
 
