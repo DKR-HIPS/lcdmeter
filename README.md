@@ -6,17 +6,19 @@ This project consists of two parts: an Arduino-based module to measure temperatu
 <b>Hardware:</b>
 The Lcd-Meter project uses an Arduino UNO or similar, together with an Ethernet shield (W5100 type), a DHT22 temperature/humidity sensor, a DS3231 realtime clock module, and a 16x2 LCD module. The latter two are connected by I2C, while the Ethernet module uses SPI and the DHT22 sensor is connected via 1-wire protocol.
 
+<img src=lcdmeter_picture.jpg width=60%>
+
 <b>Software:</b>
 On the Arduino side the project implements mostly standard procedures to read from the sensor and realtime clock, output to the LCD and to create a simple web client in order to deliver the data to the webserver via HTTP GET requests. The Arduino code makes use of the libraries Wire.h, LiquidCrystal_I2C.h, DS3231.h, DHT.h, SPI.h, and Ethernet.h.
 On the server side the data are received by sensor.php and written into .csv files. The system is desgined for simple use and therefore does not implement a database. Data can be viewed by navigating to index.php on the webserver. A few settings are available in settings.php and formatting is mostly specified in the style.css file.
 
 A demonstration website - which can also be used for initial test-driving when you have assembled your own device - is available here: https://mackrug.de/lcdmeter
 
-<img src=lcdmeter_picture.jpg width=60%>
-
 ## How to get started
 
 <b>Hardware setup:</b> Attach the Ethernet shield to the Arduino board, and wire all modules with +5V and GND. The I2C data wires from RTC and LCD modules are connected to pins A4 (SDA) and A5 (SCL). In addition, the sensor data pin is connected to Arduino pin 2, and a 10K resistor is needed as pull-up between this pin and +5V. Two buttons are optionally connected between Arduino pins 6 and 7 to GND.
+
+<br><img src=LcdMeter_wiring.png width=75%>
 
 <b>First startup:</b> Before loading the program code to the Arduino for the first time, adjust the SENDSPEED parameter (default: every 10 minutes) as you like. Also configure the Ethernet shield MAC address (has to be unique inside your network) and the static IP fallback address (has to match your local network settings). During reset (i.e. upon power-up) hold the "light" button for more than two seconds to enter the date/time setup function. This initializes the RTC module and it will keep the correct time from then on, provided that the module is equipped with battery power. 
 
