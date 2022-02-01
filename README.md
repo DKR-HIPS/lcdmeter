@@ -12,6 +12,8 @@ On the server side the data are received by sensor.php and written into .csv fil
 
 A demonstration website - which can also be used for initial test-driving when you have assembled your own device - is available here: https://mackrug.de/lcdmeter
 
+<img src=lcdmeter_picture.jpg height=300px>
+
 ## How to get started
 
 <b>Hardware setup:</b> Attach the Ethernet shield to the Arduino board, and wire all modules with +5V and GND. The I2C data wires from RTC and LCD modules are connected to pins A4 (SDA) and A5 (SCL). In addition, the sensor data pin is connected to Arduino pin 2, and a 10K resistor is needed as pull-up between this pin and +5V. Two buttons are optionally connected between Arduino pins 6 and 7 to GND.
