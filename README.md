@@ -18,7 +18,7 @@ A demonstration website - which can also be used for initial test-driving when y
 
 <b>Hardware setup:</b> Attach the Ethernet shield to the Arduino board, and wire all modules with +5V and GND. The I2C data wires from RTC and LCD modules are connected to pins A4 (SDA) and A5 (SCL). In addition, the sensor data pin is connected to Arduino pin 2, and a 10K resistor is needed as pull-up between this pin and +5V. Two buttons are optionally connected between Arduino pins 6 and 7 to GND.
 
-<br><img src=LcdMeter_wiring.png width=75%>
+<br><img src=LcdMeter_wiring.png width=80%>
 
 <b>First startup:</b> Before loading the program code to the Arduino for the first time, adjust the SENDSPEED parameter (default: every 10 minutes) as you like. Also configure the Ethernet shield MAC address (has to be unique inside your network) and the static IP fallback address (has to match your local network settings). During reset (i.e. upon power-up) hold the "light" button for more than two seconds to enter the date/time setup function. This initializes the RTC module and it will keep the correct time from then on, provided that the module is equipped with battery power. 
 
