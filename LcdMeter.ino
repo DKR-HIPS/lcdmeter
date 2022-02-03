@@ -1,9 +1,10 @@
 /*********************
 
-Lcd-Meter Version: 2022-01-13 v1.1.0
+Lcd-Meter Version: 2022-02-03 v1.2.0
 Arduino for temperature and humidity measurement, display on LCD and send data to web server.
 Parts: DHT22 sensor via 1-wire protocol, DS3231 realtime clock and 16x2 LC-display via I2C, 5100-type Ethernet shield via SPI 
-(not using the SD card on the Ethernet module). One-button date/time setup.
+(not using the SD card on the Ethernet module). 
+Option to use the built-in watchdog functionality (8 seconds timeout). One-button date/time setup.
 
 **********************/
 
@@ -13,6 +14,7 @@ Parts: DHT22 sensor via 1-wire protocol, DS3231 realtime clock and 16x2 LC-displ
 #include <DHT.h>
 #include <SPI.h>
 #include <Ethernet.h>
+#include <avr/wdt.h>
 
 #define LCDADDR 0x27      // I2C-address for LCD module (e.g. joy-it brand used in the example project) 
 #define DHTPIN 2          // The sensor is connected to PIN 2 for 1-wire protocol    
@@ -21,22 +23,25 @@ Parts: DHT22 sensor via 1-wire protocol, DS3231 realtime clock and 16x2 LC-displ
 #define LIGHTBUTTON 7     // Pin 7 input for button to toggle LCD backlight on/off
 #define SENDBUTTON 6      // Pin 6 input for button to trigger data sending manually
 
-#define NIGHT 23          // the hour when LCD backlight should automatically switch off
+#define NIGHT 22          // the hour when LCD backlight should automatically switch off
 #define MORNING 7         // the hour when LCD backlight is automatically switched on
 
 #define SENDSPEED 10      // Interval (in minutes) for sending data to the Webserver
+#define AUTORESET 0       // time (in minutes) after which it will force a reset regularly (0=disable)
 
 char server[] = "mackrug.de";     // Name of webserver, where the measurement data will be sent (note: a working test server is configured here)
 char serverpath[] = "/lcdmeter/sensor.php";  // path to PHP script on webserver, which is called via http. Starts with "/"
 char security[] = "8a7b6c5d";     // 8 hex digits security code for this device, used in the HTTP GET request and checked by PHP script on server
 char marker = char('|');          // recognition sign "|" used in the 21-characters date/time response string "|Y-m-d|H:i:s|" from the server
+bool trydhcp = true;         // true = try DHCP first to obtain an IP address
+bool usewatchdog = true;     // true = activate the Watchdog functionality (triggered if program hangs for more than 8 seconds)
 
-float tempcorr = 0.0 ;            // This correction value is applied to measured temperature (default: 0.0)
+float tempcorr = 0.0 ;       // This correction value is applied to measured temperature (default: 0.0)
 
 // MAC address from label on the ethernet shield or simply made up (but unique inside network)
 byte mac[] = { 0xA0, 0xB1, 0xC2, 0xD3, 0xE4, 0xF5 };
 // fallback IP address to use if DHCP was not successful, must match your local network settings
-IPAddress ip(192, 168, 1, 101);   
+IPAddress ip(192, 168, 0, 101);   
 
 EthernetClient webclient;
 
@@ -90,12 +95,17 @@ void setup() {
 
   dht.begin(); //DHT22 sensor start
 
-  if (Ethernet.begin(mac) == false)   // try to get IP-address via DHCP
+  bool dhcpconnect;
+  if ( trydhcp == true )    // try first DHCP according to setup
+     {
+      dhcpconnect = Ethernet.begin(mac);  
+     } 
+  if (trydhcp == false || dhcpconnect == false)
     {
      lcd.setCursor(0,1);
      lcd.print("IP: using static");
      delay(1000);
-     Ethernet.begin(mac, ip);     // if not successful, use the specified static fallback address
+     Ethernet.begin(mac, ip);     // if not successful, use the specified static address
     }  
   delay(1000);
   
@@ -104,7 +114,13 @@ void setup() {
   
   lcd.setCursor(0,1);
   lcd.print(Ethernet.localIP());
-  delay(1000);  
+  lcd.print("         ");
+  delay(1000); 
+  
+  if ( usewatchdog == true )
+     {
+      wdt_enable(WDTO_8S);
+     }  
 }
 
 String thisdate; // formatted date variable
@@ -117,12 +133,14 @@ bool displaylight = true;
 bool lightswitch = true;
 bool lbuttondown = false;
 bool sbuttondown = false;
+unsigned long resetcounter = 5*60L*AUTORESET;
 int timecounter = 1;
 int sensorcounter = 1;
 int displaycounter = 10;
 int sendcounter = 1;
 
-void loop() {
+void loop()
+{
 
 if(digitalRead(LIGHTBUTTON) == LOW && lbuttondown == false)    // when lightbutton is pressed
   {
@@ -154,11 +172,13 @@ timecounter--;
 if (timecounter < 1)
 {
   timecounter = 10;   // 10 x 20 ms = ca. 0.2 second interval
+  resetcounter--;
   thistime = nice(myRTC.getHour(h12,PM))+":"+nice(myRTC.getMinute())+":"+nice(myRTC.getSecond());
 }
 
 if (thistime != lasttime)
 {
+  wdt_reset();
   lasttime = thistime;
   thisdate = String(myRTC.getYear()+2000)+"-"+nice(myRTC.getMonth(Century))+"-"+nice(myRTC.getDate());
     
@@ -203,6 +223,8 @@ if (thistime != lasttime)
     if (sendcounter < 1)
      {
       sendcounter = 6 * SENDSPEED;
+      wdt_reset();
+      
       lcd.clear();
       lcd.print("Sending to:");
       lcd.setCursor(0,1);
@@ -222,6 +244,8 @@ if (thistime != lasttime)
         lcd.print("failed");
         // Serial.println("Server connection failed");
        }
+
+      wdt_reset();
       delay(500);
      }
   }  
@@ -245,6 +269,18 @@ else if(sensorcounter == 475)
 
 // the basic loop delay is 20 milliseconds
 delay(20);
+if (resetcounter < 1 && AUTORESET > 0 && usewatchdog == true)
+   {
+    lcd.clear();
+    lcd.print("Auto-reset!");
+    lcd.setCursor(0,1);
+    while(true)
+    {
+     lcd.print(".");
+     delay(1000);
+     //endless loop to force the 8 sec watchdog (happens every AUTORESET minutes)
+     }
+   }
 }
 
 // the function "nice" generates from int-number a string with leading zero
